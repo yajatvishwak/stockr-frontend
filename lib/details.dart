@@ -18,7 +18,8 @@ class SalesData {
 }
 
 class Details extends StatefulWidget {
-  const Details({super.key});
+  final String ticker;
+  const Details({super.key, required this.ticker});
 
   @override
   State<Details> createState() => DetailsState();
@@ -27,7 +28,7 @@ class Details extends StatefulWidget {
 class DetailsState extends State<Details> {
   double currentSliderValue = 10.0;
   String stockName = "";
-  String ticker = "ITC.NS";
+  String ticker = "";
   String summary = "";
   String logo = "";
   double open = 0.1;
@@ -35,6 +36,7 @@ class DetailsState extends State<Details> {
   double high = 0.1;
   double low = 0.1;
   bool loading = false;
+  var chartdata = {};
 
   List<dynamic> prediction = [
     {"yhat": 23, "ds": "2/12/03"},
@@ -43,6 +45,9 @@ class DetailsState extends State<Details> {
   @override
   void initState() {
     super.initState();
+    setState(() {
+      ticker = widget.ticker;
+    });
     getInitVals();
   }
 
@@ -69,6 +74,7 @@ class DetailsState extends State<Details> {
         high = res["today"]["high"];
         low = res["today"]["low"];
         prediction = res["forecast"];
+        chartdata = res["data10"];
       });
 
       // if (res["code"] == "success") {
@@ -133,33 +139,67 @@ class DetailsState extends State<Details> {
                           // Initialize category axis
                           primaryXAxis: CategoryAxis(),
                           tooltipBehavior: TooltipBehavior(enable: true),
+                          legend: Legend(isVisible: true),
                           series: [
                             LineSeries(
+                                name: "Close",
                                 // Bind data source
                                 dataSource: [
-                                  SalesData('Jan', 35),
-                                  SalesData('Feb', 28),
-                                  SalesData('Mar', 34),
-                                  SalesData('Apr', 32),
-                                  SalesData('May', 40)
+                                  for (int i = 0;
+                                      i < chartdata["close"].length;
+                                      i++)
+                                    SalesData(chartdata["date"][i],
+                                        chartdata["close"][i]),
                                 ],
                                 xValueMapper: (SalesData sales, _) =>
                                     sales.year,
                                 yValueMapper: (SalesData sales, _) =>
                                     sales.sales),
                             LineSeries(
+                                name: "Open",
+
                                 // Bind data source
                                 dataSource: [
-                                  SalesData('Jan', 135),
-                                  SalesData('Feb', 128),
-                                  SalesData('Mar', 134),
-                                  SalesData('Apr', 132),
-                                  SalesData('May', 140)
+                                  for (int i = 0;
+                                      i < chartdata["open"].length;
+                                      i++)
+                                    SalesData(chartdata["date"][i],
+                                        chartdata["open"][i]),
                                 ],
                                 xValueMapper: (SalesData sales, _) =>
                                     sales.year,
                                 yValueMapper: (SalesData sales, _) =>
-                                    sales.sales)
+                                    sales.sales),
+                            LineSeries(
+                                name: "Low",
+
+                                // Bind data source
+                                dataSource: [
+                                  for (int i = 0;
+                                      i < chartdata["low"].length;
+                                      i++)
+                                    SalesData(chartdata["date"][i],
+                                        chartdata["low"][i]),
+                                ],
+                                xValueMapper: (SalesData sales, _) =>
+                                    sales.year,
+                                yValueMapper: (SalesData sales, _) =>
+                                    sales.sales),
+                            LineSeries(
+                                name: "High",
+
+                                // Bind data source
+                                dataSource: [
+                                  for (int i = 0;
+                                      i < chartdata["high"].length;
+                                      i++)
+                                    SalesData(chartdata["date"][i],
+                                        chartdata["high"][i]),
+                                ],
+                                xValueMapper: (SalesData sales, _) =>
+                                    sales.year,
+                                yValueMapper: (SalesData sales, _) =>
+                                    sales.sales),
                           ]),
                       SizedBox(
                         height: 40,

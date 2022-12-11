@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:frontend/details.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 Future main() async {
-  // To load the .env file contents into dotenv.
-  // NOTE: fileName defaults to .env and can be omitted in this case.
-  // Ensure that the filename corresponds to the path in step 1 and 2.
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
@@ -40,10 +40,46 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  List<String> tickers = ["RELIANCE.NS"];
+
   List<dynamic> arr = [
-    {"ticker": "REL", "name": "Reliance"},
-    {"ticker": "TAT", "name": "Tata"},
+    {
+      "ticker": "REL",
+      "name": "Reliance",
+      "img": "https://logo.clearbit.com/itcportal.com"
+    },
   ];
+  TextEditingController tickerEditing = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    getInitVals();
+  }
+
+  void getInitVals() async {
+    final prefs = await SharedPreferences.getInstance();
+    tickers = prefs.getStringList("tickers") ?? [];
+    arr = [];
+    var arr2 = [];
+    for (String i in tickers) {
+      Map payload = {
+        "ticker": i,
+      };
+      var url = Uri.parse('${dotenv.env['BASEURL']!}get-name');
+      var response = await http.post(url,
+          headers: {"Content-Type": "application/json"},
+          body: json.encode(payload));
+      Map res = json.decode(response.body);
+      arr2.add({"name": res["name"], "ticker": i, "img": res["logo"]});
+    }
+    setState(() {
+      for (var item in arr2) {
+        arr.add(item);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,6 +134,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 height: 10,
                                               ),
                                               TextField(
+                                                controller: tickerEditing,
                                                 decoration: InputDecoration(
                                                     hintText:
                                                         "Add ticker here..."),
@@ -105,7 +142,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                               SizedBox(
                                                 width: double.infinity,
                                                 child: ElevatedButton(
-                                                    onPressed: () {},
+                                                    onPressed: () async {
+                                                      final pref =
+                                                          await SharedPreferences
+                                                              .getInstance();
+                                                      tickers.add(
+                                                          tickerEditing.text);
+                                                      pref.setStringList(
+                                                          "tickers", tickers);
+                                                      getInitVals();
+                                                    },
                                                     child: Text("Save")),
                                               )
                                             ]),
@@ -126,18 +172,28 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemBuilder: (context, index) {
                       return Card(
                         child: ListTile(
+                          isThreeLine: true,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const Details()),
+                                  builder: (context) => Details(
+                                        ticker: arr[index]["ticker"],
+                                      )),
                             );
                           },
+                          leading: Image.network(arr[index]["img"]),
                           title: Text(arr[index]["name"]),
                           subtitle: Text(
                               arr[index]["ticker"] + ' - Stock being watched'),
                           trailing: IconButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final pref =
+                                    await SharedPreferences.getInstance();
+                                tickers.remove(arr[index]["ticker"]);
+                                pref.setStringList("tickers", tickers);
+                                getInitVals();
+                              },
                               icon: Icon(Icons.delete_forever)),
                         ),
                       );
